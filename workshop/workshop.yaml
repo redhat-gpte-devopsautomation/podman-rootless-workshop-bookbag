@@ -1,0 +1,7 @@
+---
+name: Rootless Podman 
+modules:
+  activate:
+    - connection
+    - overview
+    - documentation/rootlesspodman

@@ -1,0 +1,11 @@
+---
+modules:
+  connection:
+    name:      "Workshop Setup"
+    exit_sign: "Workshop Overview"
+  overview:
+    name:      "Workshop Overview"
+    exit_sign: "Rootless Podman"
+  documentation/rootlesspodman:
+    name:      "Rootless Podman"
+    exit_sign: "Finish Workshop"
