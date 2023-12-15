@@ -4,11 +4,6 @@
 :show_solution: true
 
 [discrete]
-== Presented By
-
-  * Ahsen Shah
-  * Josh Disraeli
-  * Bidyut Prabha Sahu
 
 == Overview
 
