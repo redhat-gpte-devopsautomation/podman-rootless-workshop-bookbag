@@ -1,0 +1,680 @@
+:sectnums:
+:sectnumlevels: 3
+
+:toc:
+:toclevels: 1
+
+= Rootless Podman Container Fundamentals
+
+== Overview
+
+Podman (the POD manager) is a tool for developing, managing, and running containers on your Linux systems.
+
+In this unit, we will get familiar with Rootless Podman containers and how to use podman, buildah and skopeo.
+
+== Getting Started
+Exit to become student user.
+
+[{format_cmd_exec}]
+----
+exit
+----
+
+ssh to node1 as student user.
+
+[{format_cmd_exec}]
+----
+ssh student@node1
+----
+
+
+[{format_cmd_output}]
+----
+[student@bastion ~]$ ssh student@node1
+student@node1's password:
+----
+
+Send the password:
+
+[{format_cmd_exec}]
+----
+{ssh_password}
+----
+
+You are now ready to proceed with these exercises.
+
+== Core Concepts
+
+Containerization provides many advantages for the software development and deployment:
+
+ * Portability
+ * Scalability
+ * Resource Efficiency
+ * Isolation
+ * Rapid Deployment
+ * Development Productivity
+ * Version Control and Rollbacks
+ * Collaboration and Sharing
+
+Red Hat Enterprise Linux provides a set of container tools that you can use to run containers in a single server:
+
+ * podman is a container runtime and command-line tool that manages containers and container images.
+ * skopeo inspects, copies, deletes, and signs images.
+ * buildah creates container images.
+
+These tools are compatible with the Open Container Initiative (OCI). With these tools, you can manage any Linux containers that OCI-compatible container engines create, such as Podman or Docker. These tools are designed to run containers under Red Hat Enterprise Linux on a single-node container host.
+
+Podman is a fully featured container engine from the container-tools meta-package to manage Open Container Initiative (OCI) containers and images.
+The container-tools meta-package contains required utilities to interact with containers and container images.
+Here is a list of the fundamental podman commands and their purpose:
+
+  * *buildah-from* - Creates  a  new working container, either from scratch or using a specified image as a starting point.
+  * *buildah-run* - Run a command inside of the container.
+  * *buildah-commit* - Create an image from a working container.
+  * *buildah-login* - Login to a container registry.
+  * *buildah-push* - Push an image, manifest list or image index from local storage to elsewhere.
+  * *skopeo-inspect* - Return low-level information about image-name in a registry.
+  * *podman-pull* - Pull an image from a registry.
+  * *podman-run* - Run a command in a new container.
+  * *podman-ps* - Prints out information about containers.
+  * *podman generate* - Generate structured data based on containers, pods or volumes.
+  * *podman-stop* - Stop one or more running containers.
+  * *podman-rm* - Remove one or more containers.
+  * *podman-rmi* - Removes one or more locally stored images.
+
+== Exercise: Basic Information
+
+First of all, we will go ahead and download podman, buildah, skopeo packages. You should see successful installation messages. If packages are already installed, you will see "Nothing to do" message as mentioned in the below output message.
+
+[{format_cmd_exec}]
+----
+sudo dnf install -y buildah podman skopeo
+----
+
+[{format_cmd_output}]
+----
+Updating Subscription Management repositories.
+Red Hat Enterprise Linux 9 for x86_64 - BaseOS (RPMs)                                      7.3 kB/s | 2.4 kB     00:00
+Red Hat Enterprise Linux 9 for x86_64 - AppStream (RPMs)                                   8.4 kB/s | 2.8 kB     00:00
+Package buildah-1:1.27.3-1.el9_1.x86_64 is already installed.
+Package podman-2:4.2.0-11.el9_1.x86_64 is already installed.
+Package skopeo-2:1.9.4-0.1.el9_1.x86_64 is already installed.
+Dependencies resolved.
+Nothing to do.
+Complete!
+----
+
+After successul installation, we will verify the versions of buildah, podman and skopeo. Sample outputs are give below. Your versions might be different.
+
+Verify  the version of buildah.
+
+[{format_cmd_exec}]
+----
+buildah --version
+----
+
+[{format_cmd_output}]
+----
+buildah version 1.27.3 (image-spec 1.0.2-dev, runtime-spec 1.0.2-dev)
+----
+
+Verify  the version of podman.
+
+[{format_cmd_exec}]
+----
+podman --version
+----
+
+[{format_cmd_output}]
+----
+podman version 4.2.0
+----
+
+Verify  the version of skopeo.
+
+[{format_cmd_exec}]
+----
+skopeo --version
+----
+
+[{format_cmd_output}]
+----
+skopeo version 1.9.4-dev
+----
+
+
+== Exercise: Using podman, buildah and skopeo as an unprivileged user
+
+=== Create an image from a container file (simple httpd web service)
+
+We will create a new container from httpd image using "buildah from" command. With successful execution of the command, you will see the output like below. Pay attention to that.
+
+[{format_cmd_exec}]
+----
+container=$(buildah from docker.io/library/httpd:latest)
+----
+
+[{format_cmd_output}]
+----
+Trying to pull docker.io/library/httpd:latest...
+Getting image source signatures
+Copying blob ce95f18e49ae done
+Copying blob 053327351b4a done
+Copying blob a803e7c4b030 done
+Copying blob de42e9dfbbe1 done
+Copying blob 9d28e265584b done
+Copying config 359570977a done
+Writing manifest to image destination
+Storing signatures
+----
+
+We will now create the html directory to store the index.html file for our web server output. If executed successfully, won't throw any message.
+
+[{format_cmd_exec}]
+----
+buildah run $container mkdir -p /usr/local/apache2/htdocs/
+----
+
+We will then create create index.html file. Output will look like below.
+
+[{format_cmd_exec}]
+----
+echo "<html><body><h1>Welcome to my web service</h1></body></html>" | buildah run $container tee /usr/local/apache2/htdocs/index.html
+----
+
+[{format_cmd_output}]
+----
+<html><body><h1>Welcome to my web service</h1></body></html>
+----
+
+We will create an image named "mywebapp" from the working container that we created. You should see output like below.
+
+[{format_cmd_exec}]
+----
+buildah commit $container mywebapp
+----
+
+[{format_cmd_output}]
+----
+Getting image source signatures
+Copying blob d310e774110a skipped: already exists
+Copying blob 48b2344d5345 skipped: already exists
+Copying blob 137ba5ba7d2b skipped: already exists
+Copying blob 3036f5b96200 skipped: already exists
+Copying blob de32a61f011b skipped: already exists
+Copying blob 21fc07dce5eb done
+Copying config 35e86afe15 done
+Writing manifest to image destination
+Storing signatures
+35e86afe15b0cd5fc52f8f42d57bc1964cba4afe899c336a00f0ed5640091f01
+----
+
+You can check the newly created image  using "podman images" command. Pay close attention to the localhost/mywebapp image created few seconds ago.
+
+[{format_cmd_exec}]
+----
+podman images
+----
+
+[{format_cmd_output}]
+----
+REPOSITORY               TAG         IMAGE ID      CREATED        SIZE
+localhost/mywebapp       latest      be523b9198e2  3 seconds ago  174 MB
+docker.io/library/httpd  latest      a6ca7b52a415  9 days ago     174 MB
+----
+
+
+**Follow 5.2 if you do not have quay login.  If you have quay login , follow 5.3 and 5.4.**
+
+
+=== Run the Container in detach mode (in the background) from the mywebapp local image
+
+We will use "podman run" command with -d for detach mode, --name for the name of the container and -p for hostPort:containerPort.
+If you want to learn in detail, use "podman run --help".
+You will get the container ID as output.
+
+[{format_cmd_exec}]
+----
+podman run -d --name mywebapp-demo -p 8080:80 mywebapp:latest
+----
+
+[{format_cmd_output}]
+----
+de9330c9f9aca78669f32d0571dfe2f7810086bf607b066ac46cc61fff7142c8
+----
+
+=== Push the image to registry
+
+*Use YOUR QUAY ID to login.*
+
+Upon successful login, it will show "Login Successful".
+
+[{format_cmd_exec}]
+----
+buildah login quay.io
+----
+
+[{format_cmd_output}]
+----
+Username: rh_sa_bsahu
+Password:
+Login Succeeded!
+----
+
+Push the image to registry using `buildah push mywebapp:latest docker://quay.io/<your Quay ID>/mywebapp:latest`
+
+You will get output like below.
+
+[{format_cmd_output}]
+----
+[student@node1 ~]$ buildah push mywebapp:latest docker://quay.io/rh_sa_bsahu/mywebapp:latest
+Getting image source signatures
+Copying blob 137ba5ba7d2b done
+Copying blob d310e774110a done
+Copying blob 3036f5b96200 done
+Copying blob 21fc07dce5eb done
+Copying blob 48b2344d5345 done
+Copying blob de32a61f011b done
+Copying config 35e86afe15 done
+Writing manifest to image destination
+Storing signatures
+----
+
+===  Create the container by pulling the image from registry
+
+Inspect the image in the repository before pulling. Below command will provide information about the image. Verify the name, tag, created date etc.
+
+Execute `skopeo inspect docker://quay.io/<your Quay ID>/mywebapp:latest`
+
+[{format_cmd_output}]
+----
+[student@node1 ~]$ skopeo inspect docker://quay.io/rh_sa_bsahu/mywebapp:latest
+{
+    "Name": "quay.io/rh_sa_bsahu/mywebapp",
+    "Digest": "sha256:d18f4581d94c384a4c3037faeaeaad14e1cc09f84045ddccb376bc2964c980a2",
+    "RepoTags": [
+        "latest"
+    ],
+    "Created": "2023-09-20T15:15:54.914547792Z",
+    "DockerVersion": "",
+    "Labels": {
+        "io.buildah.version": "1.27.3"
+    },
+   ...
+----
+
+Pull the image from the repository.
+
+Execute `podman pull quay.io/<your Quay ID>/mywebapp:latest`
+
+[{format_cmd_output}]
+----
+[student@node1 ~]$ podman pull quay.io/rh_sa_bsahu/mywebapp:latest
+Trying to pull quay.io/rh_sa_bsahu/mywebapp:latest...
+Getting image source signatures
+Copying blob cb14fc300c63 skipped: already exists
+Copying blob 5ac0c08fbc05 skipped: already exists
+Copying blob 079b80bd93e1 skipped: already exists
+Copying blob 73c5b6af94a4 skipped: already exists
+Copying blob f19d689ee9e2 skipped: already exists
+Copying blob 59e1bb0f96e8 skipped: already exists
+Copying config 35e86afe15 done
+Writing manifest to image destination
+Storing signatures
+35e86afe15b0cd5fc52f8f42d57bc1964cba4afe899c336a00f0ed5640091f01
+[student@node1 ~]$
+----
+
+We will use "podman run" command with -d for detach mode, --name for the name of the container and -p for hostPort:containerPort using the image stored in quay. If you want to learn in detail, use "podman run --help".
+You will get the container ID as output.
+
+Execute `podman run -d --name mywebapp-demo -p 8080:80 quay.io/your Quay ID>/mywebapp:latest`
+
+[{format_cmd_output}]
+----
+[student@node1 ~]$ podman run -d --name mywebapp-demo -p 8080:80 quay.io/rh_sa_bsahu/mywebapp:latest
+2f022f995b92f7e225a9e303fc875b4e49c6e55b55c00fe5844069149a536df2
+----
+
+=== Check the STATUS of the container
+
+You will see the running container with container ID, image used, ports as below.
+
+[{format_cmd_exec}]
+----
+podman ps
+----
+
+[{format_cmd_output}]
+----
+CONTAINER ID  IMAGE                                COMMAND           CREATED             STATUS                 PORTS
+           NAMES
+2f022f995b92  quay.io/rh_sa_bsahu/mywebapp:latest  httpd-foreground  About a minute ago  Up About a minute ago  0.0.0.0:808
+0->80/tcp  mywebapp-demo
+----
+
+=== Check if the web service is accessible using curl
+
+As the container is running, we should successfully see the output of the web page.
+
+[{format_cmd_exec}]
+----
+curl -N localhost:8080
+----
+
+[{format_cmd_output}]
+----
+<html><body><h1>Welcome to my web service</h1></body></html>
+----
+
+=== Create a systemd service to get it started after system reboot automatically
+
+Create a systemd service file to manage the `mywebapp-demo` container.
+
+[{format_cmd_exec}]
+----
+mkdir -p ~/.config/systemd/user/
+cd ~/.config/systemd/user
+----
+
+Create the unit file for the `mywebapp-demo` container. It will show the path of the systemd unit file.
+
+[{format_cmd_exec}]
+----
+podman generate systemd --name mywebapp-demo --files --new
+----
+
+[{format_cmd_output}]
+----
+/home/student/.config/systemd/user/container-mywebapp-demo.service
+----
+
+As we want to test the systemd service, lets go ahead and stop/remove the `mywebapp-demo` container.
+
+[{format_cmd_exec}]
+----
+podman stop mywebapp-demo
+----
+
+[{format_cmd_output}]
+----
+[student@node1 user]$ podman stop mywebapp-demo
+mywebapp-demo
+----
+
+Delete the `mywebapp-demo` container.
+
+[{format_cmd_exec}]
+----
+podman rm mywebapp-demo
+----
+
+[{format_cmd_output}]
+----
+[student@node1 user]$ podman rm mywebapp-demo
+2f022f995b92f7e225a9e303fc875b4e49c6e55b55c00fe5844069149a536df2
+[student@node1 user]$
+----
+
+Bwfore we go ahead and test the systemctl command we have to reload the systemd daemon configuration so that the changes we made to create the unit file are reflected.
+
+[{format_cmd_exec}]
+----
+systemctl --user daemon-reload
+----
+
+Enable and start your new `container-mywebapp-demo` user service.
+
+[{format_cmd_exec}]
+----
+systemctl --user enable --now container-mywebapp-demo
+----
+
+[{format_cmd_output}]
+----
+[student@node1 user]$ systemctl --user enable --now container-mywebapp-demo
+Created symlink /home/student/.config/systemd/user/default.target.wants/container-mywebapp-demo.service → /home/student/.co
+nfig/systemd/user/container-mywebapp-demo.service.
+----
+
+Verify that the `container-mywebapp-demo` is loaded and running. If it is running, you will see it in the "Active:" tab  with Process ID and other resource information as below.
+
+[{format_cmd_exec}]
+----
+systemctl --user status container-mywebapp-demo
+----
+
+[{format_cmd_output}]
+----
+container-mywebapp-demo.service - Podman container-mywebapp-demo.service
+     Loaded: loaded (/home/student/.config/systemd/user/container-mywebapp-demo.service; enabled; vendor preset>
+     Active: active (running) since Thu 2023-11-30 18:19:53 UTC; 39s ago
+       Docs: man:podman-generate-systemd(1)
+    Process: 2939 ExecStartPre=/bin/rm -f /run/user/1001/container-mywebapp-demo.service.ctr-id (code=exited, s>
+   Main PID: 2968 (conmon)
+      Tasks: 14 (limit: 22595)
+     Memory: 16.1M
+        CPU: 318ms
+     CGroup: /user.slice/user-1001.slice/user@1001.service/app.slice/container-mywebapp-demo.service
+             ├─2953 /usr/bin/slirp4netns --disable-host-loopback --mtu=65520 --enable-sandbox --enable-seccomp >
+             ├─2955 rootlessport
+             ├─2960 rootlessport-child
+             └─2968 /usr/bin/conmon --api-version 1 -c 3d7f0dce5bd72c9d058955f7b501fd746deebd8a0c81518f5b745fcd>
+----
+
+Verify that the web server responds to requests. You should see the web page output.
+
+[{format_cmd_exec}]
+----
+curl http://localhost:8080
+----
+
+[{format_cmd_output}]
+----
+<html><body><h1>Welcome to my web service</h1></body></html>
+----
+
+Verify that the container is running.
+
+[{format_cmd_exec}]
+----
+podman ps
+----
+
+[{format_cmd_output}]
+----
+CONTAINER ID  IMAGE                                COMMAND           CREATED             STATUS                 PORTS
+           NAMES
+3e311ea3f138  quay.io/rh_sa_bsahu/mywebapp:latest  httpd-foreground  About a minute ago  Up About a minute ago  0.0.0.0:808
+0->80/tcp  mywebapp-demo
+----
+
+Use the container ID information to confirm that the systemd daemon creates a container when you restart the service.
+
+Stop the `container-mywebapp-demo` user service.
+
+[{format_cmd_exec}]
+----
+systemctl --user stop container-mywebapp-demo
+----
+
+You should see no running container.
+
+[{format_cmd_exec}]
+----
+podman ps --all
+----
+
+[{format_cmd_output}]
+----
+CONTAINER ID  IMAGE       COMMAND     CREATED     STATUS      PORTS       NAMES
+----
+
+Start the `container-mywebapp-demo` user service and check the status of running container.
+
+[{format_cmd_exec}]
+----
+systemctl --user start container-mywebapp-demo
+----
+
+[{format_cmd_exec}]
+----
+podman ps
+----
+
+[{format_cmd_output}]
+----
+CONTAINER ID  IMAGE                                COMMAND           CREATED         STATUS             PORTS
+   NAMES
+36f9a4037896  quay.io/rh_sa_bsahu/mywebapp:latest  httpd-foreground  39 seconds ago  Up 39 seconds ago  0.0.0.0:8080->80/tc
+p  mywebapp-demo
+----
+
+Ensure that the services for your user start at system boot, then restart your machine.
+
+[{format_cmd_exec}]
+----
+loginctl enable-linger
+----
+
+You will see in the output "Linger=yes" which means user's services will be executed automatically after reboot.
+
+[{format_cmd_exec}]
+----
+loginctl show-user student
+----
+
+[{format_cmd_output}]
+----
+[student@node1 user]$ loginctl show-user student
+UID=1001
+GID=1001
+Name=student
+Timestamp=Wed 2023-09-20 15:01:59 UTC
+TimestampMonotonic=73932449066
+RuntimePath=/run/user/1001
+Service=user@1001.service
+Slice=user-1001.slice
+Display=18
+State=active
+Sessions=18
+IdleHint=no
+IdleSinceHint=1695225427284535
+IdleSinceHintMonotonic=77239965832
+Linger=yes
+----
+
+We will now reboot the system to see the user's container service started automatically.
+
+[{format_cmd_exec}]
+----
+sudo systemctl reboot
+----
+
+[{format_cmd_output}]
+----
+Connection to node1 closed.
+----
+
+Log back in and verify that the systemd daemon started the `mywebapp-demo` container, and that the web content is available.
+
+[{format_cmd_exec}]
+----
+ssh student@node1
+----
+
+[{format_cmd_output}]
+----
+[student@bastion ~]$ ssh student@node1
+student@node1's password:
+----
+
+Send the password:
+
+[{format_cmd_exec}]
+----
+{ssh_password}
+----
+
+[{format_cmd_exec}]
+----
+podman ps
+----
+
+[{format_cmd_output}]
+----
+CONTAINER ID  IMAGE                                COMMAND           CREATED             STATUS                 PORTS
+           NAMES
+d9773e176ba8  quay.io/rh_sa_bsahu/mywebapp:latest  httpd-foreground  About a minute ago  Up About a minute ago  0.0.0.0:808
+0->80/tcp  mywebapp-demo
+----
+
+[{format_cmd_exec}]
+----
+curl http://localhost:8080
+----
+
+[{format_cmd_output}]
+----
+<html><body><h1>Welcome to my web service</h1></body></html>
+----
+
+We are Done! Now we will move to the cleanup exercise!
+
+=== Cleanup exercise
+
+We will remove the container. You will see the container ID in the output after successful removal.
+
+[{format_cmd_exec}]
+----
+podman rm -af
+----
+
+[{format_cmd_output}]
+----
+d9773e176ba8eb914876de20cee53a792a9e88dbd0e48c2201167b87f2a4a29c
+----
+
+We will then remove the container image.You will see the image ID deleted message as below.
+
+[{format_cmd_exec}]
+----
+podman rmi -af
+----
+
+[{format_cmd_output}]
+----
+Untagged: docker.io/library/httpd:latest
+Untagged: quay.io/rh_sa_bsahu/mywebapp:latest
+Untagged: localhost/mywebapp:latest
+Deleted: 35e86afe15b0cd5fc52f8f42d57bc1964cba4afe899c336a00f0ed5640091f01
+----
+
+Check to see if any process running. You should see nothing running.
+
+[{format_cmd_exec}]
+----
+podman ps
+----
+
+[{format_cmd_output}]
+----
+CONTAINER ID  IMAGE       COMMAND     CREATED     STATUS      PORTS       NAMES
+----
+
+Kill any process for student user. Connection to node1 will be lost.
+
+[{format_cmd_exec}]
+----
+pkill -9 -u student
+----
+
+[{format_cmd_output}]
+----
+Connection to node1 closed by remote host.
+Connection to node1 closed.
+----
+
+== Conclusion
+
+This concludes the exercises related to podman. Hope you enjoyed it!
